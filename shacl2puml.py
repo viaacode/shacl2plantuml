@@ -18,6 +18,7 @@ skinparam classFontSize 14
 skinparam componentStyle uml2
 skinparam wrapMessageWidth 100
 skinparam ArrowColor #Maroon
+skinparam linetype ortho
     """)
 
     g = Graph()
@@ -63,7 +64,7 @@ skinparam ArrowColor #Maroon
                 print_class(className)
                 print("{} --> {} : {} {}".format(to_id(nodeShape), to_id(className), to_label(propertyName), to_qualifier(minCount, maxCount)))
             else:
-                print("{} : {} : {} {}".format(to_id(nodeShape), to_label(propertyName), to_label(dataType), to_qualifier(minCount, maxCount)))
+                print("{} : <b>{}</b> : {} {}".format(to_id(nodeShape), to_label(propertyName), to_label(dataType), to_qualifier(minCount, maxCount)))
 
     print("""
 hide circle
