@@ -44,7 +44,7 @@ skinparam ArrowColor #Maroon
     def print_class(term):
         print("class \"{}\" as {}".format(to_label(term), to_id(term)))
 
-    for nodeShape in g.subjects(RDF.type, SHACL.NodeShape):
+    for nodeShape in g.subjects(RDF.type, RDFS.Class):
         print_class(nodeShape)
         
         for parentClass in g.objects(nodeShape,  RDFS.subClassOf):
