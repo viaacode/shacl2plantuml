@@ -9,6 +9,15 @@ import argparse
 
 SHACL = Namespace("http://www.w3.org/ns/shacl#")
 
+NODEKINDS = {
+    SHACL.IRI: "IRI",
+    SHACL.BlankNode: "",
+    SHACL.BlankNodeOrIRI: "",
+    SHACL.IRIOrLiteral: "",
+    SHACL.BlankNodeOrLiteral: "",
+    SHACL.IRIOrLiteral:""
+}
+
 def main(args):
 
     print("""
@@ -18,11 +27,11 @@ skinparam classFontSize 14
 skinparam componentStyle uml2
 skinparam wrapMessageWidth 100
 skinparam ArrowColor #Maroon
-skinparam linetype ortho
     """)
 
     g = Graph()
-    g.parse(args.input, format=args.format)
+    for file in args.input:
+        g.parse(file, format=args.format)
 
     def to_id(term):
         return hashlib.md5(term.encode()).hexdigest()
@@ -42,8 +51,24 @@ skinparam linetype ortho
         
         return "[{}..{}]".format(min, max)
 
+    def print_namespaces(graph):
+        print("legend top left")
+        for prefix, uri in graph.namespace_manager.namespaces():
+            print("{} = {}".format(prefix, uri))
+
+        print("endlegend")
+
     def print_class(term):
         print("class \"{}\" as {}".format(to_label(term), to_id(term)))
+    
+    def print_property(from_term, to_term, property, min, max):
+        print("{} --> {} : {} {}".format(to_id(from_term), to_id(to_term), to_label(property), to_qualifier(min, max)))
+
+    def print_attribute(from_term, property, dataType, min, max):
+        print("{} : <b>{}</b> : {} {}".format(to_id(from_term), to_label(property), to_label(dataType), to_qualifier(min, max)))
+
+
+    print_namespaces(g)
 
     for nodeShape in g.subjects(RDF.type, RDFS.Class):
         print_class(nodeShape)
@@ -59,12 +84,15 @@ skinparam linetype ortho
             className = g.value(propertyShape, SHACL['class'])
             minCount = g.value(propertyShape, SHACL.minCount)
             maxCount = g.value(propertyShape, SHACL.maxCount)
+            nodeKind = g.value(propertyShape, SHACL.nodeKind)
             
             if className is not None:
                 print_class(className)
-                print("{} --> {} : {} {}".format(to_id(nodeShape), to_id(className), to_label(propertyName), to_qualifier(minCount, maxCount)))
+                print_property(nodeShape, className, propertyName, minCount, maxCount)
+            elif dataType is not None:
+                print_attribute(nodeShape, propertyName, dataType, minCount, maxCount)
             else:
-                print("{} : <b>{}</b> : {} {}".format(to_id(nodeShape), to_label(propertyName), to_label(dataType), to_qualifier(minCount, maxCount)))
+                print_attribute(nodeShape, propertyName, nodeKind, minCount, maxCount)
 
     print("""
 hide circle
@@ -75,7 +103,7 @@ hide empty members
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generates Plant UML diagrams from the Shapes Constraint Language (SHACL).")
-    parser.add_argument('input', metavar='shaclFile.ttl',
+    parser.add_argument('input', metavar='shaclFile.ttl', nargs='+',
                     help='The SHACL file to generate the Plant UML diagram for.')
     parser.add_argument('-f', '--format', default='ttl',
                     help='The RDF serialization of the SHACL file.')
