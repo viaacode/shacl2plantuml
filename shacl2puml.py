@@ -36,9 +36,14 @@ skinparam ArrowColor #Maroon
     def to_id(term):
         return hashlib.md5(term.encode()).hexdigest()
 
+    def to_local_name(term):
+        return term.toPython().rsplit('/', 1)[-1].rsplit('#', 1)[-1]
+
     def to_label(term):
         if term is None:
             return ""
+        if 'nonamespaces' in args:
+            return to_local_name(term)
         return term.n3(g.namespace_manager)
 
     def to_qualifier(min, max):
@@ -67,8 +72,8 @@ skinparam ArrowColor #Maroon
     def print_attribute(from_term, property, dataType, min, max):
         print("{} : <b>{}</b> : {} {}".format(to_id(from_term), to_label(property), to_label(dataType), to_qualifier(min, max)))
 
-
-    print_namespaces(g)
+    if 'nonamespaces' not in args:
+        print_namespaces(g)
 
     for nodeShape in g.subjects(RDF.type, RDFS.Class):
         print_class(nodeShape)
@@ -107,6 +112,8 @@ if __name__ == "__main__":
                     help='The SHACL file to generate the Plant UML diagram for.')
     parser.add_argument('-f', '--format', default='ttl',
                     help='The RDF serialization of the SHACL file.')
+    parser.add_argument('-n', '--no-namespaces', dest='nonamespaces', action='store_true',
+                    help='Do not use prefixes when printing labels.')
     args = parser.parse_args()
 
     main(args)
