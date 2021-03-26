@@ -5,5 +5,5 @@ Simple python script to generate [Plant UML](https://plantuml.com/) files from [
 Usage:
 
 ```
-shacl2puml.py [-h] [-f FORMAT] shaclFile.ttl > diagram.puml
+shacl2puml.py [-h] [-f FORMAT] [-n NONAMESPACES] shaclFile.ttl [shaclFile.ttl ...] > diagram.puml
 ```
