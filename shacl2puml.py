@@ -9,15 +9,6 @@ import argparse
 
 SHACL = Namespace("http://www.w3.org/ns/shacl#")
 
-NODEKINDS = {
-    SHACL.IRI: "IRI",
-    SHACL.BlankNode: "",
-    SHACL.BlankNodeOrIRI: "",
-    SHACL.IRIOrLiteral: "",
-    SHACL.BlankNodeOrLiteral: "",
-    SHACL.IRIOrLiteral:""
-}
-
 def main(args):
 
     print("""
@@ -27,6 +18,8 @@ skinparam classFontSize 14
 skinparam componentStyle uml2
 skinparam wrapMessageWidth 100
 skinparam ArrowColor #Maroon
+' Remove shadows
+skinparam shadowing false
     """)
 
     g = Graph()
@@ -42,7 +35,7 @@ skinparam ArrowColor #Maroon
     def to_label(term):
         if term is None:
             return ""
-        if 'nonamespaces' in args:
+        if args.nonamespaces is not None:
             return to_local_name(term)
         return term.n3(g.namespace_manager)
 
@@ -57,7 +50,7 @@ skinparam ArrowColor #Maroon
         return "[{}..{}]".format(min, max)
 
     def print_namespaces(graph):
-        print("legend top left")
+        print("legend top right")
         for prefix, uri in graph.namespace_manager.namespaces():
             print("{} = {}".format(prefix, uri))
 
@@ -65,6 +58,9 @@ skinparam ArrowColor #Maroon
 
     def print_class(term):
         print("class \"{}\" as {}".format(to_label(term), to_id(term)))
+
+    def print_inheritance(child, parent):
+        print("{} --|> {}".format(to_id(child), to_id(parent)))
     
     def print_property(from_term, to_term, property, min, max):
         print("{} --> {} : {} {}".format(to_id(from_term), to_id(to_term), to_label(property), to_qualifier(min, max)))
@@ -72,16 +68,18 @@ skinparam ArrowColor #Maroon
     def print_attribute(from_term, property, dataType, min, max):
         print("{} : <b>{}</b> : {} {}".format(to_id(from_term), to_label(property), to_label(dataType), to_qualifier(min, max)))
 
-    if 'nonamespaces' not in args:
+    if args.nonamespaces is None:
         print_namespaces(g)
 
     for nodeShape in g.subjects(RDF.type, RDFS.Class):
         print_class(nodeShape)
         
+        # print all inheritance
         for parentClass in g.objects(nodeShape,  RDFS.subClassOf):
             print_class(parentClass)
-            print("{} --|> {}".format(to_id(nodeShape), to_id(parentClass)))
+            print_inheritance(nodeShape, parentClass)
         
+        # print all properties
         for propertyShape in g.objects(nodeShape,  SHACL.property):
             
             propertyName = g.value(propertyShape, SHACL.path)
@@ -99,6 +97,15 @@ skinparam ArrowColor #Maroon
             else:
                 print_attribute(nodeShape, propertyName, nodeKind, minCount, maxCount)
 
+        # print possible instances
+        if (None, RDF.type,  nodeShape) in g:
+            id = to_id(nodeShape)
+            print("enum \"instances of {}\" as {} #white {{".format(to_label(nodeShape), id + "_instances"))
+            for instance in g.subjects(RDF.type,  nodeShape):
+                print(to_label(instance)) 
+            print("}")
+            print("{} -[hidden]> {}".format(id, id + "_instances"))
+
     print("""
 hide circle
 hide methods
@@ -112,7 +119,7 @@ if __name__ == "__main__":
                     help='The SHACL file to generate the Plant UML diagram for.')
     parser.add_argument('-f', '--format', default='ttl',
                     help='The RDF serialization of the SHACL file.')
-    parser.add_argument('-n', '--no-namespaces', dest='nonamespaces', action='store_true',
+    parser.add_argument('-n', '--no-namespaces', dest='nonamespaces', 
                     help='Do not use prefixes when printing labels.')
     args = parser.parse_args()
 
