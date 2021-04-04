@@ -3,7 +3,7 @@
 
 from rdflib import Graph
 from rdflib.namespace import Namespace
-from rdflib.namespace import RDF, RDFS
+from rdflib.namespace import RDF, RDFS, SKOS
 import hashlib
 import argparse
 
@@ -49,9 +49,9 @@ skinparam shadowing false
         
         return "[{}..{}]".format(min, max)
 
-    def print_namespaces(graph):
+    def print_namespaces():
         print("legend top right")
-        for prefix, uri in graph.namespace_manager.namespaces():
+        for prefix, uri in g.namespace_manager.namespaces():
             print("{} = {}".format(prefix, uri))
 
         print("endlegend")
@@ -68,12 +68,38 @@ skinparam shadowing false
     def print_attribute(from_term, property, dataType, min, max):
         print("{} : <b>{}</b> : {} {}".format(to_id(from_term), to_label(property), to_label(dataType), to_qualifier(min, max)))
 
+    def print_thesaurus(term_class):
+        if (None, RDF.type,  term_class) in g:
+            id = to_id(term_class)
+            id_instances = id + "_i"
+            print("enum \"Thesaurus of {}\" as {} #white {{".format(to_label(term_class), id_instances))
+
+            # for row in g.query("""
+            #     SELECT ?c ?b ?n 
+            #     WHERE { 
+            #         ?c a ?class.
+            #         OPTIONAL { ?c skos:broader ?b }
+            #         OPTIONAL { ?c skos:narrower ?n }
+            #     }
+            # """, initBindings={'class': term}):
+            #     print(row)
+
+
+            for term in g.subjects(RDF.type,  term_class):
+                # TODO: turn this into proper SKOS printing
+                if (term, SKOS.topConceptOf, None) in g:
+                    print(to_label(term))
+                else:
+                    broader_term = g.value(term, SKOS.broader)
+                    print('<i>{} -> </i>'.format(to_label(broader_term)), to_label(term)) 
+            print("}")
+            print("{} -[hidden]> {}".format(id, id_instances))
+
     if args.nonamespaces is None:
-        print_namespaces(g)
+        print_namespaces()
 
     for nodeShape in g.subjects(RDF.type, RDFS.Class):
         print_class(nodeShape)
-        
         # print all inheritance
         for parentClass in g.objects(nodeShape,  RDFS.subClassOf):
             print_class(parentClass)
@@ -98,13 +124,9 @@ skinparam shadowing false
                 print_attribute(nodeShape, propertyName, nodeKind, minCount, maxCount)
 
         # print possible instances
-        if (None, RDF.type,  nodeShape) in g:
-            id = to_id(nodeShape)
-            print("enum \"instances of {}\" as {} #white {{".format(to_label(nodeShape), id + "_instances"))
-            for instance in g.subjects(RDF.type,  nodeShape):
-                print(to_label(instance)) 
-            print("}")
-            print("{} -[hidden]> {}".format(id, id + "_instances"))
+        # if args.thesauri is not None:
+        print_thesaurus(nodeShape)
+
 
     print("""
 hide circle
@@ -112,6 +134,8 @@ hide methods
 hide empty members
 @enduml
     """)
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generates Plant UML diagrams from the Shapes Constraint Language (SHACL).")
@@ -121,6 +145,8 @@ if __name__ == "__main__":
                     help='The RDF serialization of the SHACL file.')
     parser.add_argument('-n', '--no-namespaces', dest='nonamespaces', 
                     help='Do not use prefixes when printing labels.')
+    # parser.add_argument('-t', '--thesauri',
+    #                 help='Print SKOS instances.')
     args = parser.parse_args()
 
     main(args)
