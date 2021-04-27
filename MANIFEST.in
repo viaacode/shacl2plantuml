@@ -1,0 +1,2 @@
+include *.txt *.md
+include shacl2puml/*.py
